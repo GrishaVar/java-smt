@@ -146,18 +146,7 @@ public class StringFormulaManagerTest extends SolverBasedTest0.ParameterizedSolv
     // See what happens when we try to create a String constant with an unescaped Unicode character.
     // According to the SMTLIB standards only ASCII is allowed, and we expect an exception to be
     // thrown.
-    //
-    // Z3
-    //  Returns "/u{ce}/u{9e}" (= utf-8 encoding of "Ξ")
-    // Princess
-    //  Returns "Ξ"
-    // CVC4,5
-    //  Throw an internal exception
-    StringFormula s = smgr.makeString("\u039e");
-    try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
-      prover.isUnsat();
-      assertThrows(IllegalArgumentException.class, () -> prover.getEvaluator().evaluate(s));
-    }
+    assertThrows(IllegalArgumentException.class, () -> smgr.makeString("\u039E"));
   }
 
   @Test

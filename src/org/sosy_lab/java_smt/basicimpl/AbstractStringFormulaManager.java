@@ -10,6 +10,7 @@ package org.sosy_lab.java_smt.basicimpl;
 
 import static org.sosy_lab.java_smt.basicimpl.AbstractFormulaManager.checkVariableName;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import java.util.Collections;
@@ -42,6 +43,12 @@ public abstract class AbstractStringFormulaManager<TFormulaInfo, TType, TEnv, TF
 
   @Override
   public StringFormula makeString(String value) {
+    for (int c : value.codePoints().toArray()) {
+      Preconditions.checkArgument(
+          c <= 0x7f,
+          "String constants may only contain ASCII "
+              + "characters. Use \\u to escape Unicode characters.");
+    }
     return wrapString(makeStringImpl(value));
   }
 
