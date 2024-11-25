@@ -23,7 +23,9 @@ import org.sosy_lab.java_smt.SolverContextFactory.Solvers;
 import org.sosy_lab.java_smt.api.BooleanFormula;
 import org.sosy_lab.java_smt.api.Formula;
 import org.sosy_lab.java_smt.api.NumeralFormula.IntegerFormula;
+import org.sosy_lab.java_smt.api.ProverEnvironment;
 import org.sosy_lab.java_smt.api.RegexFormula;
+import org.sosy_lab.java_smt.api.SolverContext.ProverOptions;
 import org.sosy_lab.java_smt.api.SolverException;
 import org.sosy_lab.java_smt.api.StringFormula;
 
@@ -108,6 +110,55 @@ public class StringFormulaManagerTest extends SolverBasedTest0.ParameterizedSolv
   }
 
   // Tests
+
+  @Test
+  public void testInputEscape() throws SolverException, InterruptedException {
+    // Test if SMTLIB Unicode literals are recognized and converted to their Unicode characters.
+    StringFormula part1 = smgr.makeString("\\u{39E");
+    StringFormula part2 = smgr.makeString("}");
+    StringFormula result = smgr.makeString("\\u{39E}");
+    try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
+      prover.addConstraint(imgr.equal(imgr.makeNumber(1), smgr.length(result)));
+      prover.addConstraint(
+          imgr.equal(imgr.makeNumber(6 + 1), smgr.length(smgr.concat(part1, part2))));
+      assertThat(!prover.isUnsat()).isTrue();
+    }
+  }
+
+  @Test
+  public void testOutputUnescape() throws SolverException, InterruptedException {
+    // Test if Unicode characters get properly escaped when they are read back from the model.
+    // Fails for Princess and CVC5, which both return "\\u{39E" as "Ξ" and fail to escape the
+    // backslash in "\\u{39E" as "\\u{5c}
+    StringFormula part1 = smgr.makeString("\\u{39E");
+    StringFormula part2 = smgr.makeString("}");
+    StringFormula result = smgr.makeString("\\u{39E}");
+    try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
+      prover.isUnsat();
+      assertThat(prover.getEvaluator().evaluate(result)).isEqualTo("\\u{39e}");
+      assertThat(prover.getEvaluator().evaluate(smgr.concat(part1, part2)))
+          .isEqualTo("\\u{5c}u{39E}");
+    }
+  }
+
+  @Test
+  public void testInputUnicode() throws SolverException, InterruptedException {
+    // See what happens when we try to create a String constant with an unescaped Unicode character.
+    // According to the SMTLIB standards only ASCII is allowed, and we expect an exception to be
+    // thrown.
+    //
+    // Z3
+    //  Returns "/u{ce}/u{9e}" (= utf-8 encoding of "Ξ")
+    // Princess
+    //  Returns "Ξ"
+    // CVC4,5
+    //  Throw an internal exception
+    StringFormula s = smgr.makeString("\u039e");
+    try (ProverEnvironment prover = context.newProverEnvironment(ProverOptions.GENERATE_MODELS)) {
+      prover.isUnsat();
+      assertThrows(IllegalArgumentException.class, () -> prover.getEvaluator().evaluate(s));
+    }
+  }
 
   @Test
   public void testRegexAll() throws SolverException, InterruptedException {
