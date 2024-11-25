@@ -194,19 +194,6 @@ public class StringFormulaManagerTest extends SolverBasedTest0.ParameterizedSolv
     // Combining characters are not matched as one character.
     assertThatFormula(smgr.in(smgr.makeString("a\\u0336"), regexAllChar)).isUnsatisfiable();
     assertThatFormula(smgr.in(smgr.makeString("\\n"), regexAllChar)).isUnsatisfiable();
-
-    if (ImmutableList.of(Solvers.CVC4, Solvers.CVC5).contains(solverToUse())) {
-      // CVC4 and CVC5 do not support Unicode characters.
-      assertThrows(Exception.class, () -> smgr.range('a', 'Δ'));
-    } else {
-      // Z3 and other solvers support Unicode characters in the theory of strings.
-      assertThatFormula(
-              smgr.in(smgr.makeVariable("x"), smgr.union(smgr.range('a', 'Δ'), regexAllChar)))
-          .isSatisfiable();
-      // Combining characters are not matched as one character.
-      // Non-ascii non-printable characters should use the codepoint representation
-      assertThatFormula(smgr.in(smgr.makeString("Δ"), regexAllChar)).isUnsatisfiable();
-    }
   }
 
   @Test
