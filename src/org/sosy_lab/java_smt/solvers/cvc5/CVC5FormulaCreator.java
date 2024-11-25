@@ -824,7 +824,7 @@ public class CVC5FormulaCreator extends FormulaCreator<Term, Sort, Solver, Term>
         return value.getBooleanValue();
 
       } else if (value.isStringValue()) {
-        return value.getStringValue();
+        return escapeString(value.getStringValue());
 
       } else {
         // String serialization for Strings and unknown terms.
