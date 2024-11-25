@@ -567,4 +567,119 @@ public abstract class FormulaCreator<TFormulaInfo, TType, TEnv, TFuncDecl> {
     }
     return s;
   }
+
+  /**
+   * Escape all Unicode characters in the String
+   *
+   * <p>This will also replace any occurrence of <code>\</code> with <code>\\u{5c}</code> to avoid
+   * ambiguity.
+   */
+  public static String escapeString(String pInput) {
+    StringBuilder builder = new StringBuilder();
+    for (int c : pInput.codePoints().toArray()) {
+      if (c == '\\') {
+        builder.append("\\u{5c}");
+      } else if (c > 0x7f) {
+        builder.append("\\u{").append(Integer.toString(c, 16)).append("}");
+      } else {
+        builder.append((char) c);
+      }
+    }
+    return builder.toString();
+  }
+
+  /**
+   * Tries to parse an escaped Unicode character
+   *
+   * <p>Returns the original String if parsing is not possible.
+   */
+  private static String literalOrSkip(String pToken) {
+    String literal;
+    if (pToken.startsWith("\\u{")) {
+      if (pToken.length() > 9 || !pToken.endsWith("}")) {
+        // Abort if there is no closing bracket, or if there are too many digits for the literal
+        // The longest allowed literal is \\u{d5 d4 d3 d2 d1}
+        return pToken;
+      }
+      literal = pToken.substring(3, pToken.length() - 1);
+    } else {
+      if (pToken.length() != 6) {
+        // Abort if there are not exactly 4 digits
+        // The literal must have this form: \\u d3 d2 d1 d0
+        return pToken;
+      }
+      literal = pToken.substring(2);
+    }
+
+    // Try to parse the digits as a (hexadecimal) integer
+    // Abort if there is an error
+    int value;
+    try {
+      value = Integer.parseInt(literal, 16);
+    } catch (NumberFormatException e) {
+      return pToken;
+    }
+
+    // Return the Unicode letter if it fits into a single 16bit character
+    // Otherwise throw an exception as we don't support Unicode characters with more than 4 digits
+    char[] chars = Character.toChars(value);
+    if (chars.length != 1) {
+      throw new IllegalArgumentException();
+    } else {
+      return String.valueOf(chars[0]);
+    }
+  }
+
+  /** Replace escape sequences for Unicode letters with their UTF16 representation. */
+  public static String unescapeString(String pInput) {
+    StringBuilder builder = new StringBuilder();
+    while (!pInput.isEmpty()) {
+      // Search for the next escape sequence
+      int start = pInput.indexOf("\\u");
+      if (start == -1) {
+        // Append the rest of the String to the output if there are no more escaped Unicode
+        // characters
+        builder.append(pInput);
+        pInput = "";
+      } else {
+        // Store the prefix up to the escape sequence
+        String prefix = pInput.substring(0, start);
+
+        // Skip ahead and get the escape sequence
+        pInput = pInput.substring(start);
+        String value;
+        if (pInput.charAt(2) == '{') {
+          // Sequence has the form \\u{d5 d4 d3 d2 d1 d0}
+          // Find the closing bracket for the literal:
+          int stop = pInput.indexOf('}');
+          if (stop == -1) {
+            // Use the index right after "\\u{" if there is no closing bracket
+            stop = 2;
+          }
+          value = pInput.substring(0, stop + 1);
+          pInput = pInput.substring(stop + 1);
+        } else {
+          // Sequence has the form \\u d3 d2 d1 d0
+          int stop = 2;
+          while (stop < pInput.length()) {
+            char c = pInput.charAt(stop);
+            if (Character.digit(c, 16) == -1) {
+              break;
+            }
+            stop++;
+          }
+          value = pInput.substring(0, stop);
+          pInput = pInput.substring(stop);
+        }
+
+        // Try to parse the escape sequence to replace it with its 16bit Unicode character
+        // If parsing fails just keep it in the String
+        String nextToken = literalOrSkip(value);
+
+        // Collect the prefix and the (possibly) translated escape sequence
+        builder.append(prefix).append(nextToken);
+      }
+    }
+    return builder.toString();
+  }
 }

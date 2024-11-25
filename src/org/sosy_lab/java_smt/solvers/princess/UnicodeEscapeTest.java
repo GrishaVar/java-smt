@@ -18,6 +18,7 @@ import com.google.common.collect.ImmutableMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Test;
+import org.sosy_lab.java_smt.basicimpl.FormulaCreator;
 
 public class UnicodeEscapeTest {
   /** Some valid encodings for Unicode characters in SMTLIB2. */
@@ -33,8 +34,7 @@ public class UnicodeEscapeTest {
   @Test
   public void validCodesTest() {
     for (Map.Entry<String, String> code : validCodes.entrySet()) {
-      assertThat(PrincessStringFormulaManager.unescapeString(code.getKey()))
-          .isEqualTo(code.getValue());
+      assertThat(FormulaCreator.unescapeString(code.getKey())).isEqualTo(code.getValue());
     }
   }
 
@@ -43,7 +43,7 @@ public class UnicodeEscapeTest {
     for (String code : invalidCodes) {
       // Invalid codes need to be preserved. It is important that we don't match, and simply copy
       // them over.
-      assertThat(PrincessStringFormulaManager.unescapeString(code)).isEqualTo(code);
+      assertThat(FormulaCreator.unescapeString(code)).isEqualTo(code);
     }
   }
 
@@ -52,9 +52,7 @@ public class UnicodeEscapeTest {
     // We don't support \\u{...} with 5 digits, even though it is legal in SMTLIB, as the code
     // can't be represented as a single UTF16 character. If such a code is found we expect an
     // exception to be thrown.
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> PrincessStringFormulaManager.unescapeString("\\u{abcde}"));
-    assertThat(PrincessStringFormulaManager.unescapeString("\\u{abcdg}")).isEqualTo("\\u{abcdg}");
+    assertThrows(IllegalArgumentException.class, () -> FormulaCreator.unescapeString("\\u{abcde}"));
+    assertThat(FormulaCreator.unescapeString("\\u{abcdg}")).isEqualTo("\\u{abcdg}");
   }
 }
