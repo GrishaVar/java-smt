@@ -30,6 +30,26 @@ public class PrincessStringFormulaManager
   }
 
   /**
+   * Escape all Unicode characters in the String
+   *
+   * <p>This will also replace any occurrence of <code>\</code> with <code>\\u{5c}</code> to avoid
+   * ambiguity.
+   */
+  static String escapeString(String pInput) {
+    StringBuilder builder = new StringBuilder();
+    for (int c : pInput.codePoints().toArray()) {
+      if (c == '\\') {
+        builder.append("\\u{5c}");
+      } else if (c > 0x7f) {
+        builder.append("\\u{").append(Integer.toString(c, 16)).append("}");
+      } else {
+        builder.append((char) c);
+      }
+    }
+    return builder.toString();
+  }
+
+  /**
    * Tries to parse an escaped Unicode character
    *
    * <p>Returns the original String if parsing is not possible.

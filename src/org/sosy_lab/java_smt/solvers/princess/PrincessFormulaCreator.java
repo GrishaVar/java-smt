@@ -264,7 +264,7 @@ class PrincessFormulaCreator
     }
     checkArgument("str_empty".equals(fun.fun().name()));
     checkArgument(fun.fun().arity() == 0);
-    return str.toString();
+    return PrincessStringFormulaManager.escapeString(str.toString());
   }
 
   @Override
